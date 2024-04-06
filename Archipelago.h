@@ -9,6 +9,7 @@
 void AP_Init(const char*, const char*, const char*, const char*);
 void AP_Init(const char*);
 bool AP_IsInit();
+bool AP_IsConnected();
 
 void AP_Start();
 
