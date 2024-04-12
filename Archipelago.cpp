@@ -142,7 +142,6 @@ void AP_Init(const char* ip, const char* game, const char* player_name, const ch
             }
             else if (msg->type == ix::WebSocketMessageType::Open)
             {
-                connected = true;
                 //printf("AP: Connected to Archipelago\n");
             }
             else if (msg->type == ix::WebSocketMessageType::Error || msg->type == ix::WebSocketMessageType::Close)
@@ -154,7 +153,7 @@ void AP_Init(const char* ip, const char* game, const char* player_name, const ch
                 }
                 //printf("AP: Error connecting to Archipelago. Retries: %d\n", msg->errorInfo.retries-1);
                 if (msg->errorInfo.retries-1 >= 2 && !isSSL) {
-                    //printf("AP: SSL connection failed. Attempting unencrypted...\n");
+                    //printf("AP: SSL connection failed. Attempting encrypted...\n");
                     webSocket.setUrl("wss://" + ap_ip);
                     isSSL = true;
                 }
@@ -407,14 +406,25 @@ bool AP_IsMessagePending() {
     return !messageQueue.empty();
 }
 
-AP_Message* AP_GetLatestMessage() {
+AP_Message* AP_GetEarliestMessage() {
     return messageQueue.front();
+}
+
+AP_Message* AP_GetLatestMessage() {
+    return messageQueue.back();
+}
+
+void AP_ClearEarliestMessage() {
+    if (AP_IsMessagePending()) {
+        delete messageQueue.front();
+        messageQueue.pop_front();
+    }
 }
 
 void AP_ClearLatestMessage() {
     if (AP_IsMessagePending()) {
-        delete messageQueue.front();
-        messageQueue.pop_front();
+        delete messageQueue.back();
+        messageQueue.pop_back();
     }
 }
 
@@ -592,6 +602,7 @@ bool parse_response(std::string msg, std::string &request) {
             auth = true;
             ssl_success = auth && isSSL;
             refused = false;
+            connected = true;
 
             //printf("AP: Authenticated\n");
             ap_player_id = root[i]["slot"].asInt();
@@ -771,7 +782,6 @@ bool parse_response(std::string msg, std::string &request) {
                 messageQueue.push_back(msg);
             }
         } else if (cmd == "LocationInfo") {
-            //printf("AP: locationinfo\n");
             std::vector<AP_NetworkItem> locations;
             for (unsigned int j = 0; j < root[i]["locations"].size(); j++) {
                 AP_NetworkItem item;

@@ -6,6 +6,8 @@
 #include <cstdint>
 #include <set>
 
+extern std::string ap_player_name;
+
 void AP_Init(const char*, const char*, const char*, const char*);
 void AP_Init(const char*);
 bool AP_IsInit();
@@ -121,8 +123,10 @@ struct AP_CountdownMessage : AP_Message {
 /* Message Management Functions */
 
 bool AP_IsMessagePending();
-void AP_ClearLatestMessage();
+AP_Message* AP_GetEarliestMessage();
 AP_Message* AP_GetLatestMessage();
+void AP_ClearEarliestMessage();
+void AP_ClearLatestMessage();
 
 void AP_Say(std::string);
 
