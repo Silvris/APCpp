@@ -78,6 +78,10 @@ void AP_SetLocationInfoCallback(void (*f_locrecv)(std::vector<AP_NetworkItem>));
 void AP_SendItem(int64_t location);
 void AP_SendItem(std::set<int64_t> const& locations);
 
+// Gives all Items/Locations in current game
+std::vector<int64_t> getAllItemIds();
+std::vector<int64_t> getAllLocationIds();
+
 // Called when Story completed, sends StatusUpdate
 void AP_StoryComplete();
 

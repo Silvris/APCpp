@@ -57,6 +57,10 @@ std::map<int, AP_NetworkPlayer> map_players;
 std::map<std::pair<std::string,int64_t>, std::string> map_location_id_name;
 std::map<std::pair<std::string,int64_t>, std::string> map_item_id_name;
 
+// Lists
+std::vector<int64_t> all_items;
+std::vector<int64_t> all_locations;
+
 // Callback function pointers
 void (*resetItemValues)();
 void (*getitemfunc)(int64_t,bool);
@@ -602,7 +606,6 @@ bool parse_response(std::string msg, std::string &request) {
             auth = true;
             ssl_success = auth && isSSL;
             refused = false;
-            connected = true;
 
             //printf("AP: Authenticated\n");
             ap_player_id = root[i]["slot"].asInt();
@@ -677,6 +680,7 @@ bool parse_response(std::string msg, std::string &request) {
                 req_t.append(sync);
             }
             request = writer.write(req_t);
+            connected = true;
             return true;
         } else if (cmd == "DataPackage") {
             parseDataPkg(root[i]["data"]);
@@ -895,13 +899,34 @@ void parseDataPkg(Json::Value new_datapkg) {
 }
 
 void parseDataPkg() {
+    bool is_current_game;
+    size_t i;
     for (std::string game : datapkg_cache["games"].getMemberNames()) {
         Json::Value game_data = datapkg_cache["games"][game];
+        if (game == ap_game) {
+            is_current_game = true;
+            i = 0;
+        } else {
+            is_current_game = false;
+        }
         for (std::string item_name : game_data["item_name_to_id"].getMemberNames()) {
-            map_item_id_name[{game,game_data["item_name_to_id"][item_name].asInt64()}] = item_name;
+            int64_t item_id = game_data["item_name_to_id"][item_name].asInt64();
+            map_item_id_name[{game,item_id}] = item_name;
+            if (is_current_game) {
+                all_items[i] = item_id;
+                ++i;
+            }
+        }
+        if (is_current_game) {
+            i = 0;
         }
         for (std::string location : game_data["location_name_to_id"].getMemberNames()) {
-            map_location_id_name[{game,game_data["location_name_to_id"][location].asInt64()}] = location;
+            int64_t location_id = game_data["location_name_to_id"][location].asInt64();
+            map_location_id_name[{game,location_id}] = location;
+            if (is_current_game) {
+                all_locations[i] = location_id;
+                ++i;
+            }
         }
     }
 }
@@ -914,6 +939,14 @@ std::string getItemName(std::string game, int64_t id) {
 std::string getLocationName(std::string game, int64_t id) {
     std::pair<std::string,int64_t> location = {game,id};
     return map_location_id_name.count(location) ? map_location_id_name.at(location) : std::string("Unknown Location") + std::to_string(id) + " from " + game;
+}
+
+std::vector<int64_t> getAllItemIds() {
+    return all_items;
+}
+
+std::vector<int64_t> getAllLocationIds() {
+    return all_locations;
 }
 
 AP_NetworkPlayer getPlayer(int team, int slot) {
