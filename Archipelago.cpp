@@ -306,13 +306,34 @@ void AP_SendItem(std::set<int64_t> const& locations) {
     }
 }
 
-void AP_SendLocationScouts(std::set<int64_t> const& locations, int create_as_hint) {
+void AP_SendLocationScout(int64_t location, int create_as_hint) {
     if (multiworld) {
         Json::Value req_t;
         req_t[0]["cmd"] = "LocationScouts";
         req_t[0]["locations"] = Json::arrayValue;
-        for (int64_t loc : locations) {
-            req_t[0]["locations"].append(loc);
+        req_t[0]["locations"].append(location);
+        req_t[0]["create_as_hint"] = create_as_hint;
+        APSend(writer.write(req_t));
+    } else {
+        Json::Value fake_msg;
+        fake_msg[0]["cmd"] = "LocationInfo";
+        fake_msg[0]["locations"] = Json::arrayValue;
+        Json::Value netitem;
+        netitem["item"] = sp_ap_root["location_to_item"].get(std::to_string(location), 0).asInt64();
+        netitem["location"] = location;
+        netitem["player"] = ap_player_id;
+        netitem["flags"] = 0b001; // Hardcoded for SP seeds.
+        fake_msg[0]["locations"].append(netitem);
+    }
+}
+
+void AP_SendLocationScouts(std::vector<int64_t> locations, int create_as_hint) {
+    if (multiworld) {
+        Json::Value req_t;
+        req_t[0]["cmd"] = "LocationScouts";
+        req_t[0]["locations"] = Json::arrayValue;
+        for (size_t i = 0; i < locations.size(); ++i) {
+            req_t[0]["locations"].append(locations[i]);
         }
         req_t[0]["create_as_hint"] = create_as_hint;
         APSend(writer.write(req_t));
@@ -320,10 +341,10 @@ void AP_SendLocationScouts(std::set<int64_t> const& locations, int create_as_hin
         Json::Value fake_msg;
         fake_msg[0]["cmd"] = "LocationInfo";
         fake_msg[0]["locations"] = Json::arrayValue;
-        for (int64_t loc : locations) {
+        for (size_t i = 0; i < locations.size(); ++i) {
             Json::Value netitem;
-            netitem["item"] = sp_ap_root["location_to_item"].get(std::to_string(loc), 0).asInt64();
-            netitem["location"] = loc;
+            netitem["item"] = sp_ap_root["location_to_item"].get(std::to_string(locations[i]), 0).asInt64();
+            netitem["location"] = locations[i];
             netitem["player"] = ap_player_id;
             netitem["flags"] = 0b001; // Hardcoded for SP seeds.
             fake_msg[0]["locations"].append(netitem);
@@ -900,12 +921,10 @@ void parseDataPkg(Json::Value new_datapkg) {
 
 void parseDataPkg() {
     bool is_current_game;
-    size_t i;
     for (std::string game : datapkg_cache["games"].getMemberNames()) {
         Json::Value game_data = datapkg_cache["games"][game];
         if (game == ap_game) {
             is_current_game = true;
-            i = 0;
         } else {
             is_current_game = false;
         }
@@ -913,19 +932,14 @@ void parseDataPkg() {
             int64_t item_id = game_data["item_name_to_id"][item_name].asInt64();
             map_item_id_name[{game,item_id}] = item_name;
             if (is_current_game) {
-                all_items[i] = item_id;
-                ++i;
+                all_items.push_back(item_id);
             }
-        }
-        if (is_current_game) {
-            i = 0;
         }
         for (std::string location : game_data["location_name_to_id"].getMemberNames()) {
             int64_t location_id = game_data["location_name_to_id"][location].asInt64();
             map_location_id_name[{game,location_id}] = location;
             if (is_current_game) {
-                all_locations[i] = location_id;
-                ++i;
+                all_locations.push_back(location_id);
             }
         }
     }
@@ -941,12 +955,20 @@ std::string getLocationName(std::string game, int64_t id) {
     return map_location_id_name.count(location) ? map_location_id_name.at(location) : std::string("Unknown Location") + std::to_string(id) + " from " + game;
 }
 
-std::vector<int64_t> getAllItemIds() {
-    return all_items;
+int64_t getItemId(size_t item_i) {
+    return all_items[item_i];
 }
 
-std::vector<int64_t> getAllLocationIds() {
-    return all_locations;
+int64_t getLocationId(size_t location_i) {
+    return all_locations[location_i];
+}
+
+size_t getNumLocalItems() {
+    return all_items.size();
+}
+
+size_t getNumLocalLocations() {
+    return all_locations.size();
 }
 
 AP_NetworkPlayer getPlayer(int team, int slot) {
