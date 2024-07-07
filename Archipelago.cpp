@@ -56,6 +56,8 @@ bool queueitemrecvmsg = true;
 std::map<int, AP_NetworkPlayer> map_players;
 std::map<std::pair<std::string,int64_t>, std::string> map_location_id_name;
 std::map<std::pair<std::string,int64_t>, std::string> map_item_id_name;
+std::map<int64_t, int64_t> location_to_item;
+std::map<int64_t, bool> location_has_local_item;
 
 // Lists
 std::vector<int64_t> all_items;
@@ -819,6 +821,12 @@ bool parse_response(std::string msg, std::string &request) {
                 item.locationName = getLocationName(ap_game, item.location);
                 item.playerName = player.alias;
                 locations.push_back(item);
+                location_to_item[item.location] = item.item;
+                if (item.player == ap_player_id) {
+                    location_has_local_item[item.location] = true;
+                } else {
+                    location_has_local_item[item.location] = false;
+                }
             }
             if (locinfofunc) {
                 locinfofunc(locations);
@@ -943,6 +951,15 @@ void parseDataPkg() {
             }
         }
     }
+    AP_SendLocationScouts(all_locations, 0);
+}
+
+int64_t getItemAtLocation(int64_t location_id) {
+    return location_to_item[location_id];
+}
+
+bool getLocationHasLocalItem(int64_t location_id) {
+    return location_has_local_item[location_id];
 }
 
 std::string getItemName(std::string game, int64_t id) {

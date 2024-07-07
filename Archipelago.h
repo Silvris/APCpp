@@ -80,6 +80,8 @@ void AP_SendItem(int64_t location);
 void AP_SendItem(std::set<int64_t> const& locations);
 
 // Gives all Items/Locations in current game
+int64_t getItemAtLocation(int64_t location_id);
+bool getLocationHasLocalItem(int64_t location_id);
 int64_t getItemId(size_t item_i);
 int64_t getLocationId(size_t location_i);
 
