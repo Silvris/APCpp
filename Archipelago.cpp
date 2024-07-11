@@ -31,6 +31,7 @@ bool multiworld = true;
 bool isSSL = false;
 bool ssl_success = false;
 bool connected = false;
+bool notfound = false;
 int ap_player_id;
 std::string ap_player_name;
 size_t ap_player_name_hash;
@@ -65,7 +66,7 @@ std::vector<int64_t> all_locations;
 
 // Callback function pointers
 void (*resetItemValues)();
-void (*getitemfunc)(int64_t,bool);
+void (*getitemfunc)(int64_t,int64_t,bool);
 void (*checklocfunc)(int64_t);
 void (*locinfofunc)(std::vector<AP_NetworkItem>) = nullptr;
 void (*recvdeath)() = nullptr;
@@ -115,8 +116,11 @@ void parseDataPkg();
 AP_NetworkPlayer getPlayer(int team, int slot);
 // PRIV Func Declarations End
 
+#define MAX_RETRIES 3
+
 void AP_Init(const char* ip, const char* game, const char* player_name, const char* passwd) {
     multiworld = true;
+    notfound = false;
     
     uint64_t milliseconds_since_epoch = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     rando = std::mt19937(milliseconds_since_epoch);
@@ -139,6 +143,9 @@ void AP_Init(const char* ip, const char* game, const char* player_name, const ch
     webSocket.setUrl("ws://" + ap_ip);
     webSocket.setOnMessageCallback([](const ix::WebSocketMessagePtr& msg)
         {
+            if (msg->errorInfo.retries-1 >= MAX_RETRIES) {
+                notfound = true;
+            }
             if (msg->type == ix::WebSocketMessageType::Message)
             {
                 std::string request;
@@ -158,7 +165,7 @@ void AP_Init(const char* ip, const char* game, const char* player_name, const ch
                     map_server_data.erase(itr.first);
                 }
                 //printf("AP: Error connecting to Archipelago. Retries: %d\n", msg->errorInfo.retries-1);
-                if (msg->errorInfo.retries-1 >= 2 && !isSSL) {
+                if (msg->errorInfo.retries-1 >= 1 && !isSSL) {
                     //printf("AP: SSL connection failed. Attempting encrypted...\n");
                     webSocket.setUrl("wss://" + ap_ip);
                     isSSL = true;
@@ -236,6 +243,10 @@ void AP_Start() {
         }
         parse_response(writer.write(fake_msg), req);
     }
+}
+
+void AP_Stop() {
+    webSocket.stop();
 }
 
 bool AP_IsInit() {
@@ -386,7 +397,7 @@ void AP_SetItemClearCallback(void (*f_itemclr)()) {
     resetItemValues = f_itemclr;
 }
 
-void AP_SetItemRecvCallback(void (*f_itemrecv)(int64_t,bool)) {
+void AP_SetItemRecvCallback(void (*f_itemrecv)(int64_t,int64_t,bool)) {
     getitemfunc = f_itemrecv;
 }
 
@@ -479,6 +490,9 @@ AP_ConnectionStatus AP_GetConnectionStatus() {
         } else {
             return AP_ConnectionStatus::Connected;
         }
+    }
+    if (notfound) {
+        return AP_ConnectionStatus::NotFound;
     }
     return AP_ConnectionStatus::Disconnected;
 }
@@ -838,11 +852,12 @@ bool parse_response(std::string msg, std::string &request) {
             bool notify;
             for (unsigned int j = 0; j < root[i]["items"].size(); j++) {
                 int64_t item_id = root[i]["items"][j]["item"].asInt64();
+                int64_t sending_player_id = root[i]["items"][j]["player"].asInt();
                 notify = (item_idx == 0 && last_item_idx <= j && multiworld) || item_idx != 0;
-                (*getitemfunc)(item_id, notify);
+                (*getitemfunc)(item_id, sending_player_id, notify);
                 if (queueitemrecvmsg && notify) {
                     AP_ItemRecvMessage* msg = new AP_ItemRecvMessage;
-                    AP_NetworkPlayer sender = getPlayer(0, root[i]["items"][j]["player"].asInt());
+                    AP_NetworkPlayer sender = getPlayer(0, sending_player_id);
                     msg->type = AP_MessageType::ItemRecv;
                     msg->item = getItemName(ap_game, item_id);
                     msg->sendPlayer = sender.alias;
