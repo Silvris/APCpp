@@ -66,7 +66,7 @@ std::vector<int64_t> all_locations;
 
 // Callback function pointers
 void (*resetItemValues)();
-void (*getitemfunc)(int64_t,int64_t,bool);
+void (*getitemfunc)(int64_t,int,bool);
 void (*checklocfunc)(int64_t);
 void (*locinfofunc)(std::vector<AP_NetworkItem>) = nullptr;
 void (*recvdeath)() = nullptr;
@@ -116,7 +116,7 @@ void parseDataPkg();
 AP_NetworkPlayer getPlayer(int team, int slot);
 // PRIV Func Declarations End
 
-#define MAX_RETRIES 3
+#define MAX_RETRIES 1
 
 void AP_Init(const char* ip, const char* game, const char* player_name, const char* passwd) {
     multiworld = true;
@@ -165,7 +165,7 @@ void AP_Init(const char* ip, const char* game, const char* player_name, const ch
                     map_server_data.erase(itr.first);
                 }
                 //printf("AP: Error connecting to Archipelago. Retries: %d\n", msg->errorInfo.retries-1);
-                if (msg->errorInfo.retries-1 >= 1 && !isSSL) {
+                if (/*msg->errorInfo.retries-1 >= 1 && */!isSSL) {
                     //printf("AP: SSL connection failed. Attempting encrypted...\n");
                     webSocket.setUrl("wss://" + ap_ip);
                     isSSL = true;
@@ -173,7 +173,7 @@ void AP_Init(const char* ip, const char* game, const char* player_name, const ch
             }
         }
     );
-    webSocket.setPingInterval(45);
+    webSocket.setPingInterval(10);
 
     AP_NetworkPlayer archipelago {
         -1,
@@ -397,7 +397,7 @@ void AP_SetItemClearCallback(void (*f_itemclr)()) {
     resetItemValues = f_itemclr;
 }
 
-void AP_SetItemRecvCallback(void (*f_itemrecv)(int64_t,int64_t,bool)) {
+void AP_SetItemRecvCallback(void (*f_itemrecv)(int64_t,int,bool)) {
     getitemfunc = f_itemrecv;
 }
 
@@ -497,7 +497,7 @@ AP_ConnectionStatus AP_GetConnectionStatus() {
     return AP_ConnectionStatus::Disconnected;
 }
 
-int AP_GetUUID() {
+uint64_t AP_GetUUID() {
     return ap_uuid;
 }
 
@@ -852,7 +852,7 @@ bool parse_response(std::string msg, std::string &request) {
             bool notify;
             for (unsigned int j = 0; j < root[i]["items"].size(); j++) {
                 int64_t item_id = root[i]["items"][j]["item"].asInt64();
-                int64_t sending_player_id = root[i]["items"][j]["player"].asInt();
+                int sending_player_id = root[i]["items"][j]["player"].asInt();
                 notify = (item_idx == 0 && last_item_idx <= j && multiworld) || item_idx != 0;
                 (*getitemfunc)(item_id, sending_player_id, notify);
                 if (queueitemrecvmsg && notify) {

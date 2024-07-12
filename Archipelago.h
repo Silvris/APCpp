@@ -57,7 +57,7 @@ void AP_SetItemClearCallback(void (*f_itemclr)());
 //Parameter Function must collect item id given with parameter
 //Second parameter indicates player who sent the item
 //Third parameter indicates whether or not to notify player
-void AP_SetItemRecvCallback(void (*f_itemrecv)(int64_t,int64_t,bool));
+void AP_SetItemRecvCallback(void (*f_itemrecv)(int64_t,int,bool));
 
 //Parameter Function must mark given location id as checked
 void AP_SetLocationCheckedCallback(void (*f_locrecv)(int64_t));
@@ -175,7 +175,7 @@ struct AP_RoomInfo {
 
 int AP_GetRoomInfo(AP_RoomInfo*);
 AP_ConnectionStatus AP_GetConnectionStatus();
-int AP_GetUUID();
+uint64_t AP_GetUUID();
 int AP_GetPlayerID();
 
 /* Serverside Data Types */
