@@ -59,6 +59,7 @@ std::map<std::pair<std::string,int64_t>, std::string> map_location_id_name;
 std::map<std::pair<std::string,int64_t>, std::string> map_item_id_name;
 std::map<int64_t, int64_t> location_to_item;
 std::map<int64_t, bool> location_has_local_item;
+std::map<int64_t, AP_ItemType> location_item_type;
 
 // Lists
 std::vector<int64_t> all_items;
@@ -173,7 +174,7 @@ void AP_Init(const char* ip, const char* game, const char* player_name, const ch
             }
         }
     );
-    webSocket.setPingInterval(10);
+    webSocket.setPingInterval(5);
 
     AP_NetworkPlayer archipelago {
         -1,
@@ -247,6 +248,9 @@ void AP_Start() {
 
 void AP_Stop() {
     webSocket.stop();
+    ix::uninitNetSystem();
+    init = false;
+    notfound = false;
 }
 
 bool AP_IsInit() {
@@ -836,6 +840,17 @@ bool parse_response(std::string msg, std::string &request) {
                 item.playerName = player.alias;
                 locations.push_back(item);
                 location_to_item[item.location] = item.item;
+                AP_ItemType type;
+                if (item.flags == 0) {
+                    type = ITEM_TYPE_FILLER;
+                } else if (item.flags & 0b001) {
+                    type = ITEM_TYPE_PROGRESSION;
+                } else if (item.flags & 0b010) {
+                    type = ITEM_TYPE_USEFUL;
+                } else if (item.flags & 0b100) {
+                    type = ITEM_TYPE_TRAP;
+                }
+                location_item_type[item.location] = type;
                 if (item.player == ap_player_id) {
                     location_has_local_item[item.location] = true;
                 } else {
@@ -943,25 +958,19 @@ void parseDataPkg(Json::Value new_datapkg) {
 }
 
 void parseDataPkg() {
-    bool is_current_game;
     for (std::string game : datapkg_cache["games"].getMemberNames()) {
         Json::Value game_data = datapkg_cache["games"][game];
-        if (game == ap_game) {
-            is_current_game = true;
-        } else {
-            is_current_game = false;
-        }
         for (std::string item_name : game_data["item_name_to_id"].getMemberNames()) {
             int64_t item_id = game_data["item_name_to_id"][item_name].asInt64();
             map_item_id_name[{game,item_id}] = item_name;
-            if (is_current_game) {
+            if (game == ap_game) {
                 all_items.push_back(item_id);
             }
         }
         for (std::string location : game_data["location_name_to_id"].getMemberNames()) {
             int64_t location_id = game_data["location_name_to_id"][location].asInt64();
             map_location_id_name[{game,location_id}] = location;
-            if (is_current_game) {
+            if (game == ap_game) {
                 all_locations.push_back(location_id);
             }
         }
@@ -975,6 +984,10 @@ int64_t getItemAtLocation(int64_t location_id) {
 
 bool getLocationHasLocalItem(int64_t location_id) {
     return location_has_local_item[location_id];
+}
+
+AP_ItemType getLocationItemType(int64_t location_id) {
+    return location_item_type[location_id];
 }
 
 std::string getItemName(std::string game, int64_t id) {
