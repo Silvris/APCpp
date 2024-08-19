@@ -60,6 +60,7 @@ std::map<std::pair<std::string,int64_t>, std::string> map_item_id_name;
 std::map<int64_t, int64_t> location_to_item;
 std::map<int64_t, bool> location_has_local_item;
 std::map<int64_t, AP_ItemType> location_item_type;
+std::map<std::string, std::string> slot_data;
 
 // Lists
 std::vector<int64_t> all_items;
@@ -585,6 +586,14 @@ std::string AP_GetPrivateServerDataPrefix() {
     return "APCpp" + std::to_string(ap_player_name_hash) + "APCpp" + std::to_string(ap_player_id) + "APCpp";
 }
 
+int64_t AP_GetSlotDataInt(const char* key) {
+    return stol(slot_data[key]);
+}
+
+std::string AP_GetSlotDataString(const char* key) {
+    return slot_data[key];
+}
+
 // PRIV
 
 void AP_Init_Generic() {
@@ -672,6 +681,9 @@ bool parse_response(std::string msg, std::string &request) {
             else if (root[i]["slot_data"]["DeathLink_Amnesty"] != Json::nullValue)
                 deathlink_amnesty = root[i]["slot_data"].get("DeathLink_Amnesty", 0).asInt();
             cur_deathlink_amnesty = deathlink_amnesty;
+            for (const auto& key : root[i]["slot_data"].getMemberNames()) {
+                slot_data[key] = root[i]["slot_data"][key].asString();
+            }
             for (std::string key : slotdata_strings) {
                 if (map_slotdata_callback_int.count(key)) {
                     (*map_slotdata_callback_int.at(key))(root[i]["slot_data"][key].asInt());
