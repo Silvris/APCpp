@@ -255,7 +255,7 @@ void AP_Start() {
         for (auto location_id : sp_ap_root["locations"][std::to_string(AP_OFFLINE_SLOT)].getMemberNames()) {
             Json::Value location;
             location["item"] = sp_ap_root["locations"][std::to_string(AP_OFFLINE_SLOT)][location_id][0];
-            location["location"] = strtoll(location_id.c_str(), NULL, 10);
+            location["location"] = (int64_t) strtoll(location_id.c_str(), NULL, 10);
             location["player"] = ap_player_id;
             location["flags"] = sp_ap_root["locations"][std::to_string(AP_OFFLINE_SLOT)][location_id][2];
             fake_msg[0]["locations"].append(location);
