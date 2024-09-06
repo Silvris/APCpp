@@ -241,7 +241,7 @@ void AP_Start() {
         fake_msg[0]["players"][0]["alias"] = AP_OFFLINE_NAME;
         fake_msg[0]["players"][0]["name"] = AP_OFFLINE_NAME;
         fake_msg[0]["checked_locations"] = sp_save_root["checked_locations"];
-        fake_msg[0]["slot_data"] = sp_ap_root["slot_data"]["1"];
+        fake_msg[0]["slot_data"] = sp_ap_root["slot_data"][std::to_string(AP_OFFLINE_SLOT)];
         std::string req;
         parse_response(writer.write(fake_msg), req);
         fake_msg.clear();
