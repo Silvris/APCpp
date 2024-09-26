@@ -762,6 +762,8 @@ bool parse_response(std::string msg, std::string &request) {
             }
         } else if (cmd == "Connected") {
             // Avoid inconsistency if we disconnected before
+            printf("AP: Authenticated\n");
+            ap_player_id = root[i]["slot"].asInt(); // MUST be called before resetitemvalues, otherwise PrivateServerDataPrefix, GetPlayerID return broken values!
             if (resetItemValues) {
                 (*resetItemValues)();
             }
