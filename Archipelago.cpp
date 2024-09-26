@@ -778,8 +778,6 @@ bool parse_response(std::string msg, std::string &request) {
             scout_queued_locations = false;
             scout_all_locations = false;
 
-            //printf("AP: Authenticated\n");
-            ap_player_id = root[i]["slot"].asInt();
             for (unsigned int j = 0; j < root[i]["checked_locations"].size(); j++) {
                 //Sync checks with server
                 int64_t loc_id = root[i]["checked_locations"][j].asInt64();
