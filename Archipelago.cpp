@@ -666,8 +666,8 @@ int64_t AP_GetSlotDataInt(const char* key) {
     return stol(slot_data[key]);
 }
 
-std::string AP_GetSlotDataString(const char* key) {
-    return slot_data[key];
+const char* AP_GetSlotDataString(const char* key) {
+    return slot_data[key].c_str();
 }
 
 int64_t AP_GetItemAtLocation(int64_t location_id) {
