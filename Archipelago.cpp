@@ -138,6 +138,9 @@ AP_NetworkPlayer getPlayer(int team, int slot);
 void AP_Init(const char* ip, const char* game, const char* player_name, const char* passwd) {
     multiworld = true;
     notfound = false;
+    queue_all_locations = false;
+    scout_queued_locations = false;
+    scout_all_locations = false;
     
     uint64_t milliseconds_since_epoch = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     rando = std::mt19937((uint32_t) milliseconds_since_epoch);
@@ -207,6 +210,10 @@ void AP_Init(const char* ip, const char* game, const char* player_name, const ch
 
 void AP_Init(const char* filename) {
     multiworld = false;
+    notfound = false;
+    queue_all_locations = false;
+    scout_queued_locations = false;
+    scout_all_locations = false;
     std::ifstream mwfile(filename);
     reader.parse(mwfile,sp_ap_root);
     mwfile.close();
@@ -774,9 +781,6 @@ bool parse_response(std::string msg, std::string &request) {
             auth = true;
             ssl_success = auth && isSSL;
             refused = false;
-            queue_all_locations = false;
-            scout_queued_locations = false;
-            scout_all_locations = false;
 
             for (unsigned int j = 0; j < root[i]["checked_locations"].size(); j++) {
                 //Sync checks with server
