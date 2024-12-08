@@ -66,6 +66,8 @@ std::map<std::pair<std::string,int64_t>, std::string> map_item_id_name;
 std::map<int64_t, int64_t> location_to_item;
 std::map<int64_t, bool> location_has_local_item;
 std::map<int64_t, AP_ItemType> location_item_type;
+std::map<int64_t, std::string> location_item_name;
+std::map<int64_t, std::string> location_item_player;
 std::map<std::string, std::string> slot_data;
 
 // Sets
@@ -689,6 +691,14 @@ AP_ItemType AP_GetLocationItemType(int64_t location_id) {
     return location_item_type[location_id];
 }
 
+std::string AP_GetLocationItemName(int64_t location_id) {
+    return location_item_name[location_id];
+}
+
+std::string AP_GetLocationItemPlayer(int64_t location_id) {
+    return location_item_player[location_id];
+}
+
 // PRIV
 
 void AP_Init_Generic() {
@@ -994,6 +1004,8 @@ bool parse_response(std::string msg, std::string &request) {
                 }
                 location_item_type[item.location] = type;
                 location_has_local_item[item.location] = item.player == ap_player_id;
+                location_item_name[item.location] = item.itemName;
+                location_item_player[item.location] = item.playerName;
             }
             if (locinfofunc) {
                 locinfofunc(locations);
