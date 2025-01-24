@@ -27,6 +27,7 @@ constexpr int AP_OFFLINE_SLOT = 1;
 // PRIV Func Declarations Start
 void AP_Init_Generic(AP_State* state);
 bool parse_response(AP_State* state, std::string msg, std::string &request);
+void AP_GetServerData(AP_State* state, AP_GetServerDataRequest* request);
 void APSend(AP_State* state, std::string req);
 void WriteFileJSON(AP_State* state, Json::Value val, std::string path);
 std::string getItemName(AP_State* state, std::string game, int64_t id);
@@ -55,6 +56,7 @@ struct AP_State
     bool queue_all_locations;
     bool scout_queued_locations;
     bool scout_all_locations;
+    bool manage_memory = true;
     int scout_queued_locations_hint;
     int scout_all_locations_hint;
     int ap_player_id;
@@ -67,7 +69,7 @@ struct AP_State
     std::mt19937 rando;
     AP_NetworkVersion client_version = {0,2,6}; // Default for compatibility reasons
 
-    //Deathlink Stuff
+    // Deathlink Stuff
     bool deathlinkstat = false;
     bool deathlinksupported = false;
     bool enable_deathlink = false;
@@ -111,7 +113,8 @@ struct AP_State
     void (*setreplyfunc)(AP_SetReply) = nullptr;
 
     // Serverdata Management
-    std::map<std::string,AP_DataType> map_serverdata_typemanage;
+    std::map<std::string, AP_DataType> map_serverdata_typemanage;
+    std::map<std::string, AP_RequestStatus> map_serverdata_set_status;
     AP_GetServerDataRequest resync_serverdata_request;
     size_t last_item_idx = 0;
 
@@ -119,13 +122,13 @@ struct AP_State
     std::string sp_save_path;
     Json::Value sp_save_root;
 
-    //Misc Data for Clients
+    // Misc Data for Clients
     AP_RoomInfo lib_room_info;
 
-    //Server Data Stuff
+    // Server Data Stuff
     std::map<std::string, AP_GetServerDataRequest*> map_server_data;
 
-    //Slot Data Stuff
+    // Slot Data Stuff
     std::map<std::string, void (*)(int)> map_slotdata_callback_int;
     std::map<std::string, void (*)(std::string)> map_slotdata_callback_raw;
     std::map<std::string, void (*)(std::map<int,int>)> map_slotdata_callback_mapintint;
@@ -149,7 +152,7 @@ AP_State* AP_New() {
 }
 
 void AP_Free(AP_State* state) {
-    free(state);
+    delete state;
 }
 
 bool firstInit = false;
@@ -203,7 +206,7 @@ void AP_Init(AP_State* state, const char* ip, const char* game, const char* play
             {
                 state->datapkg_received = false;
                 state->auth = false;
-                for (std::pair<std::string,AP_GetServerDataRequest*> itr : state->map_server_data) {
+                for (std::pair<std::string, AP_GetServerDataRequest*> itr : state->map_server_data) {
                     itr.second->status = AP_RequestStatus::Error;
                     state->map_server_data.erase(itr.first);
                 }
@@ -625,7 +628,7 @@ void AP_SetServerData(AP_State* state, AP_SetServerDataRequest* request) {
             for (int i = 0; i < request->operations.size(); i++) {
                 req_t[0]["operations"][i]["operation"] = request->operations[i].operation;
                 Json::Value data;
-                state->reader.parse((*(std::string*)request->operations[i].value), data);
+                state->reader.parse(*((std::string*)request->operations[i].value), data);
                 req_t[0]["operations"][i]["value"] = data;
             }
             Json::Value default_val_json;
@@ -643,7 +646,7 @@ void AP_RegisterSetReplyCallback(AP_State* state, void (*f_setreply)(AP_SetReply
     state->setreplyfunc = f_setreply;
 }
 
-void AP_SetNotifies(AP_State* state, std::map<std::string,AP_DataType> keylist) {
+void AP_SetNotifies(AP_State* state, std::map<std::string, AP_DataType> keylist) {
     Json::Value req_t;
     req_t[0]["cmd"] = "SetNotify";
     int i = 0;
@@ -656,22 +659,51 @@ void AP_SetNotifies(AP_State* state, std::map<std::string,AP_DataType> keylist) 
 }
 
 void AP_SetNotify(AP_State* state, std::string key, AP_DataType type) {
-    std::map<std::string,AP_DataType> keylist;
+    std::map<std::string, AP_DataType> keylist;
     keylist[key] = type;
     AP_SetNotifies(state, keylist);
 }
 
-void AP_GetServerData(AP_State* state, AP_GetServerDataRequest* request) {
+void AP_SetManageMemory(AP_State* state, bool b) {
+    state->manage_memory = b;
+}
+
+char* AP_GetDataStorageSync(AP_State* state, const char* key) {
+    if (state->map_server_data.count(key) == 0) {
+        state->map_server_data[key] = new AP_GetServerDataRequest();
+    } else {
+        if (state->manage_memory) {
+            delete[] state->map_server_data[key]->value;
+        }
+    }
+
+    AP_GetServerDataRequest* request = state->map_server_data[key];
     request->status = AP_RequestStatus::Pending;
-
-    if (state->map_server_data.find(request->key) != state->map_server_data.end()) return;
-
-    state->map_server_data[request->key] = request;
+    request->type = AP_DataType::Raw;
+    request->key = key;
 
     Json::Value req_t;
     req_t[0]["cmd"] = "Get";
-    req_t[0]["keys"][0] = request->key;
+    req_t[0]["keys"][0] = key;
     APSend(state, state->writer.write(req_t));
+
+    while (request->status == AP_RequestStatus::Pending);
+
+    return (char*) request->value;
+}
+
+void AP_SetDataStorageSync(AP_State* state, const char* key, char* value) {
+    state->map_serverdata_set_status[key] = AP_RequestStatus::Pending;
+
+    Json::Value req_t;
+    req_t[0]["cmd"] = "Set";
+    req_t[0]["key"] = key;
+    req_t[0]["want_reply"] = "true";
+    req_t[0]["operations"][0]["operation"] = "replace";
+    req_t[0]["operations"][0]["value"] = value;
+    APSend(state, state->writer.write(req_t));
+
+    while (state->map_serverdata_set_status[key] == AP_RequestStatus::Pending);
 }
 
 std::string AP_GetPrivateServerDataPrefix(AP_State* state) {
@@ -856,10 +888,10 @@ bool parse_response(AP_State* state, std::string msg, std::string &request) {
                 
             }
 
-            state->resync_serverdata_request.key = "APCppLastRecv" + state->ap_player_name + std::to_string(state->ap_player_id);
-            state->resync_serverdata_request.value = &state->last_item_idx;
-            state->resync_serverdata_request.type = AP_DataType::Int;
-            AP_GetServerData(state, &state->resync_serverdata_request);
+            //~ state->resync_serverdata_request.key = "APCppLastRecv" + state->ap_player_name + std::to_string(state->ap_player_id);
+            //~ state->resync_serverdata_request.value = &state->last_item_idx;
+            //~ state->resync_serverdata_request.type = AP_DataType::Int;
+            //~ AP_GetServerData(state, &state->resync_serverdata_request);
 
             AP_RoomInfo info;
             AP_GetRoomInfo(state, &info);
@@ -912,52 +944,55 @@ bool parse_response(AP_State* state, std::string msg, std::string &request) {
             for (auto itr : root[i]["keys"].getMemberNames()) {
                 if (!state->map_server_data.count(itr)) continue;
                 AP_GetServerDataRequest* target = state->map_server_data[itr];
-                switch (target->type) {
-                    case AP_DataType::Int:
-                        *((int*)target->value) = root[i]["keys"][itr].asInt();
-                        break;
-                    case AP_DataType::Double:
-                        *((double*)target->value) = root[i]["keys"][itr].asDouble();
-                        break;
-                    case AP_DataType::Raw:
-                        *((std::string*)target->value) = state->writer.write(root[i]["keys"][itr]);
-                        break;
+                std::string value_str = state->writer.write(root[i]["keys"][itr]);
+                if (value_str[value_str.length() - 1] == '\n') {
+                    value_str = value_str.substr(0, value_str.length() - 1);
                 }
+                if (value_str[value_str.length() - 1] == '\r') {
+                    value_str = value_str.substr(0, value_str.length() - 1);
+                }
+                if (value_str[0] == '\"' && value_str[value_str.length() - 1] == '\"') {
+                    value_str = value_str.substr(1, value_str.length() - 2);
+                }
+                char* value_c_str = new char[value_str.length() + 1];
+                printf("made string at %p\n", value_c_str);
+                memcpy(value_c_str, value_str.c_str(), value_str.length() + 1);
+                target->value = value_c_str;
                 target->status = AP_RequestStatus::Done;
-                state->map_server_data.erase(itr);
             }
         } else if (cmd == "SetReply") {
-            if (state->setreplyfunc) {
-                int int_val;
-                int int_orig_val;
-                double dbl_val;
-                double dbl_orig_val;
-                std::string raw_val;
-                std::string raw_orig_val;
-                AP_SetReply setreply;
-                setreply.key = root[i]["key"].asString();
-                switch (state->map_serverdata_typemanage[setreply.key]) {
-                    case AP_DataType::Int:
-                        int_val = root[i]["value"].asInt();
-                        int_orig_val = root[i]["original_value"].asInt();
-                        setreply.value = &int_val;
-                        setreply.original_value = &int_orig_val;
-                        break;
-                    case AP_DataType::Double:
-                        dbl_val = root[i]["value"].asDouble();
-                        dbl_orig_val = root[i]["original_value"].asDouble();
-                        setreply.value = &dbl_val;
-                        setreply.original_value = &dbl_orig_val;
-                        break;
-                    default:
-                        raw_val = state->writer.write(root[i]["value"]);
-                        raw_orig_val = state->writer.write(root[i]["original_value"]);
-                        setreply.value = &raw_val;
-                        setreply.original_value = &raw_orig_val;
-                        break;
-                }
-                (*state->setreplyfunc)(setreply);
-            }
+            //~ int int_val;
+            //~ int int_orig_val;
+            //~ double dbl_val;
+            //~ double dbl_orig_val;
+            //~ std::string raw_val;
+            //~ std::string raw_orig_val;
+            AP_SetReply setreply;
+            setreply.key = root[i]["key"].asString();
+            //~ switch (state->map_serverdata_typemanage[setreply.key]) {
+                //~ case AP_DataType::Int:
+                    //~ int_val = root[i]["value"].asInt();
+                    //~ int_orig_val = root[i]["original_value"].asInt();
+                    //~ setreply.value = &int_val;
+                    //~ setreply.original_value = &int_orig_val;
+                    //~ break;
+                //~ case AP_DataType::Double:
+                    //~ dbl_val = root[i]["value"].asDouble();
+                    //~ dbl_orig_val = root[i]["original_value"].asDouble();
+                    //~ setreply.value = &dbl_val;
+                    //~ setreply.original_value = &dbl_orig_val;
+                    //~ break;
+                //~ default:
+                    //~ raw_val = state->writer.write(root[i]["value"]);
+                    //~ raw_orig_val = state->writer.write(root[i]["original_value"]);
+                    //~ setreply.value = &raw_val;
+                    //~ setreply.original_value = &raw_orig_val;
+                    //~ break;
+            //~ }
+            //~ if (state->setreplyfunc) {
+                //~ (*state->setreplyfunc)(setreply);
+            //~ }
+            state->map_serverdata_set_status[setreply.key] = AP_RequestStatus::Done;
         } else if (cmd == "PrintJSON") {
             const std::string printType = root[i].get("type","").asString();
             if (printType == "ItemSend" || printType == "ItemCheat") {
@@ -1056,18 +1091,18 @@ bool parse_response(AP_State* state, std::string msg, std::string &request) {
                 }
             }
             state->last_item_idx = item_idx == 0 ? root[i]["items"].size() : state->last_item_idx + root[i]["items"].size();
-            AP_SetServerDataRequest request;
-            request.key = "APCppLastRecv" + state->ap_player_name + std::to_string(state->ap_player_id);
-            AP_DataStorageOperation replac;
-            replac.operation = "replace";
-            replac.value = &state->last_item_idx;
-            std::vector<AP_DataStorageOperation> operations;
-            operations.push_back(replac);
-            request.operations = operations;
-            request.default_value = 0;
-            request.type = AP_DataType::Int;
-            request.want_reply = false;
-            AP_SetServerData(state, &request);
+            //~ AP_SetServerDataRequest request;
+            //~ request.key = "APCppLastRecv" + state->ap_player_name + std::to_string(state->ap_player_id);
+            //~ AP_DataStorageOperation replac;
+            //~ replac.operation = "replace";
+            //~ replac.value = &state->last_item_idx;
+            //~ std::vector<AP_DataStorageOperation> operations;
+            //~ operations.push_back(replac);
+            //~ request.operations = operations;
+            //~ request.default_value = 0;
+            //~ request.type = AP_DataType::Int;
+            //~ request.want_reply = false;
+            //~ AP_SetServerData(state, &request);
         } else if (cmd == "RoomUpdate") {
             //Sync checks with server
             for (unsigned int j = 0; j < root[i]["checked_locations"].size(); j++) {
@@ -1105,6 +1140,19 @@ bool parse_response(AP_State* state, std::string msg, std::string &request) {
         }
     }
     return false;
+}
+
+void AP_GetServerData(AP_State* state, AP_GetServerDataRequest* request) {
+    request->status = AP_RequestStatus::Pending;
+
+    if (state->map_server_data.find(request->key) != state->map_server_data.end()) return;
+
+    state->map_server_data[request->key] = request;
+
+    Json::Value req_t;
+    req_t[0]["cmd"] = "Get";
+    req_t[0]["keys"][0] = request->key;
+    APSend(state, state->writer.write(req_t));
 }
 
 void APSend(AP_State* state, std::string req) {
