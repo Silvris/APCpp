@@ -955,7 +955,6 @@ bool parse_response(AP_State* state, std::string msg, std::string &request) {
                     value_str = value_str.substr(1, value_str.length() - 2);
                 }
                 char* value_c_str = new char[value_str.length() + 1];
-                printf("made string at %p\n", value_c_str);
                 memcpy(value_c_str, value_str.c_str(), value_str.length() + 1);
                 target->value = value_c_str;
                 target->status = AP_RequestStatus::Done;
