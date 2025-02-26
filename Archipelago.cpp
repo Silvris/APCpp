@@ -338,6 +338,10 @@ void AP_SetClientVersion(AP_State* state, AP_NetworkVersion* version) {
     state->client_version.build = version->build;
 }
 
+bool AP_LocationExists(AP_State* state, int64_t location_idx) {
+    return state->all_locations.find(location_idx) != state->all_locations.end();
+}
+
 void AP_SendItem(AP_State* state, int64_t location_idx) {
     AP_SendItems(state, std::set<int64_t>{ location_idx });
 }

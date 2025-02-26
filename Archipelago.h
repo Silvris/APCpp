@@ -106,6 +106,7 @@ void AP_SendLocationScoutsAll(AP_State*, int create_as_hint);
 void AP_SendLocationScouts(AP_State*, std::set<int64_t> locations, int create_as_hint);
 // Receive Function for LocationInfo
 void AP_SetLocationInfoCallback(AP_State*, void (*f_locrecv)(std::vector<AP_NetworkItem>));
+bool AP_LocationExists(AP_State*, int64_t location_idx);
 
 /* Game Management Functions */
 
