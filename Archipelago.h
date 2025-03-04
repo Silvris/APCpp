@@ -95,6 +95,9 @@ void AP_RegisterSlotDataRawCallback(AP_State*, std::string, void (*f_slotdata)(s
 int64_t AP_GetSlotDataInt(AP_State*, const char* key);
 const char* AP_GetSlotDataString(AP_State*, const char* key);
 
+char* AP_GetDataStorageSync(AP_State* state, const char* key);
+void AP_SetDataStorageSync(AP_State* state, const char* key, char* value);
+
 bool AP_GetDataPkgReceived(AP_State*);
 
 // Send LocationScouts packet
