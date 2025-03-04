@@ -97,6 +97,7 @@ const char* AP_GetSlotDataString(AP_State*, const char* key);
 
 char* AP_GetDataStorageSync(AP_State* state, const char* key);
 void AP_SetDataStorageSync(AP_State* state, const char* key, char* value);
+void AP_SetDataStorageAsync(AP_State* state, const char* key, char* value);
 
 bool AP_GetDataPkgReceived(AP_State*);
 

@@ -697,6 +697,11 @@ char* AP_GetDataStorageSync(AP_State* state, const char* key) {
 }
 
 void AP_SetDataStorageSync(AP_State* state, const char* key, char* value) {
+    AP_SetDataStorageAsync(state, key, value);
+    while (state->map_serverdata_set_status[key] == AP_RequestStatus::Pending);
+}
+
+void AP_SetDataStorageAsync(AP_State* state, const char* key, char* value) {
     state->map_serverdata_set_status[key] = AP_RequestStatus::Pending;
 
     Json::Value req_t;
@@ -706,8 +711,6 @@ void AP_SetDataStorageSync(AP_State* state, const char* key, char* value) {
     req_t[0]["operations"][0]["operation"] = "replace";
     req_t[0]["operations"][0]["value"] = value;
     APSend(state, state->writer.write(req_t));
-
-    while (state->map_serverdata_set_status[key] == AP_RequestStatus::Pending);
 }
 
 std::string AP_GetPrivateServerDataPrefix(AP_State* state) {
