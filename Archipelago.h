@@ -125,8 +125,8 @@ int64_t AP_GetReceivedItem(AP_State*, size_t item_idx);
 int64_t AP_GetItemAtLocation(AP_State*, int64_t location_id);
 bool AP_GetLocationHasLocalItem(AP_State*, int64_t location_id);
 AP_ItemType AP_GetLocationItemType(AP_State*, int64_t location_id);
-std::string AP_GetLocationItemName(AP_State*, int64_t location_id);
-std::string AP_GetLocationItemPlayer(AP_State*, int64_t location_id);
+const char* AP_GetLocationItemName(AP_State*, int64_t location_id);
+const char* AP_GetLocationItemPlayer(AP_State*, int64_t location_id);
 std::string AP_GetItemName(AP_State*, std::string game, int64_t id);
 std::string AP_GetLocationName(AP_State*, std::string game, int64_t id);
 

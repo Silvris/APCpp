@@ -749,12 +749,12 @@ AP_ItemType AP_GetLocationItemType(AP_State* state, int64_t location_id) {
     return state->location_item_type[location_id];
 }
 
-std::string AP_GetLocationItemName(AP_State* state, int64_t location_id) {
-    return state->location_item_name[location_id];
+const char* AP_GetLocationItemName(AP_State* state, int64_t location_id) {
+    return state->location_item_name[location_id].c_str();
 }
 
-std::string AP_GetLocationItemPlayer(AP_State* state, int64_t location_id) {
-    return state->location_item_player[location_id];
+const char* AP_GetLocationItemPlayer(AP_State* state, int64_t location_id) {
+    return state->location_item_player[location_id].c_str();
 }
 
 }
