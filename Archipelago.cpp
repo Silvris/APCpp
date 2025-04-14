@@ -219,6 +219,7 @@ void AP_Init(AP_State* state, const char* ip, const char* game, const char* play
             }
         }
     );
+    state->webSocket.enablePerMessageDeflate();
     state->webSocket.setPingInterval(5);
 
     AP_NetworkPlayer archipelago {
