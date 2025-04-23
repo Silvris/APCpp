@@ -4,3 +4,6 @@
 [submodule "IXWebSocket"]
 	path = IXWebSocket
 	url = https://github.com/N00byKing/IXWebSocket
+[submodule "lib/zlib"]
+	path = lib/zlib
+	url = https://github.com/madler/zlib.git

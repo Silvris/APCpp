@@ -3,12 +3,14 @@ cmake_minimum_required(VERSION 3.10)
 project(APCpp)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(USE_ZLIB OFF)
 
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
-add_library(APCpp SHARED Archipelago.cpp Archipelago.h)
-add_library(APCpp-static STATIC Archipelago.cpp Archipelago.h)
+add_library(APCpp SHARED Archipelago.cpp)
+set_target_properties(APCpp PROPERTIES PUBLIC_HEADER Archipelago.h)
+
+add_library(APCpp-static STATIC Archipelago.cpp)
+set_target_properties(APCpp-static PROPERTIES PUBLIC_HEADER Archipelago.h)
 
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(ENABLE_TESTING OFF CACHE BOOL "" FORCE)
@@ -27,6 +29,21 @@ if (WIN32 AND USE_TLS)
     set(MBEDCRYPTO_LIBRARY mbedcrypto)
     add_subdirectory(${CMAKE_BINARY_DIR}/mbedtls-3.4.0 mbedtls_bin)
 endif (WIN32 AND USE_TLS)
+
+if (NOT MINGW)
+    find_package(ZLIB)
+endif (NOT MINGW)
+if (MINGW OR NOT ZLIB_FOUND)
+    set(ZLIB_BUILD_SHARED OFF)
+    include(FetchContent)
+    FetchContent_Declare(
+        zlib
+        SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib/zlib
+        OVERRIDE_FIND_PACKAGE
+    )
+    FetchContent_MakeAvailable(zlib)
+    add_library(ZLIB::ZLIB ALIAS zlibstatic)
+endif (MINGW OR NOT ZLIB_FOUND)
 
 set(IXWEBSOCKET_INSTALL OFF CACHE BOOL "" FORCE)
 add_subdirectory(IXWebSocket)
@@ -59,3 +76,6 @@ endif((NOT JSONCPP_FOUND))
 if (WIN32)
     target_link_libraries(APCpp ws2_32)
 endif(WIN32)
+
+install(TARGETS APCpp PUBLIC_HEADER)
+install(TARGETS APCpp-static PUBLIC_HEADER)
