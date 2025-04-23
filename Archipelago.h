@@ -276,6 +276,8 @@ void AP_SetNotifies(AP_State*, std::map<std::string,AP_DataType>);
 // Single Key version of above for convenience
 void AP_SetNotify(AP_State*, std::string, AP_DataType);
 
+// If using APCpp from a language with garbage collection,
+// call this and set to false
 void AP_SetManageMemory(AP_State*, bool);
 
 }
