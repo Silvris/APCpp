@@ -759,7 +759,7 @@ const char* AP_GetLocationItemPlayer(AP_State* state, int64_t location_id) {
 }
 
 const char* AP_GetPlayerFromSlot(AP_State* state, int slot) {
-    return &state->map_players[slot].alias.c_str();
+    return state->map_players[slot].alias.c_str();
 }
 
 }
