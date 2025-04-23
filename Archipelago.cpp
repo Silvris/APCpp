@@ -84,6 +84,7 @@ struct AP_State
     std::map<int64_t, AP_NetworkPlayer> map_players;
     std::map<std::pair<std::string,int64_t>, std::string> map_location_id_name;
     std::map<std::pair<std::string,int64_t>, std::string> map_item_id_name;
+    std::map<int64_t, std::string> item_to_name;
     std::map<int64_t, int64_t> location_to_item;
     std::map<int64_t, bool> location_has_local_item;
     std::map<int64_t, AP_ItemType> location_item_type;
@@ -722,6 +723,10 @@ bool AP_GetLocationIsChecked(AP_State* state, int64_t location_idx) {
     return state->checked_locations.find(location_idx) != state->checked_locations.end();
 }
 
+const char* AP_GetItemNameFromID(AP_State* state, int64_t item_id) {
+    return state->item_to_name[item_id].c_str();
+}
+
 size_t AP_GetReceivedItemsSize(AP_State* state) {
     return state->received_items.size();
 }
@@ -1205,6 +1210,7 @@ void parseDataPkg(AP_State* state) {
         for (std::string item_name : game_data["item_name_to_id"].getMemberNames()) {
             int64_t item_id = game_data["item_name_to_id"][item_name].asInt64();
             state->map_item_id_name[{game, item_id}] = item_name;
+            state->item_to_name[item_id] = item_name;
             if (game == state->ap_game) {
                 state->all_items.insert(item_id);
             }
