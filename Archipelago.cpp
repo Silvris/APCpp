@@ -81,7 +81,7 @@ struct AP_State
     bool queueitemrecvmsg = true;
 
     // Data Maps
-    std::map<int, AP_NetworkPlayer> map_players;
+    std::map<int64_t, AP_NetworkPlayer> map_players;
     std::map<std::pair<std::string,int64_t>, std::string> map_location_id_name;
     std::map<std::pair<std::string,int64_t>, std::string> map_item_id_name;
     std::map<int64_t, int64_t> location_to_item;
