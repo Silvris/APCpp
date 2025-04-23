@@ -122,6 +122,7 @@ void AP_SendItems(AP_State*, std::set<int64_t> const& locations);
 bool AP_GetLocationIsChecked(AP_State*, int64_t location_idx);
 size_t AP_GetReceivedItemsSize(AP_State*);
 int64_t AP_GetReceivedItem(AP_State*, size_t item_idx);
+int64_t AP_GetSendingPlayer(AP_State* state, size_t item_idx);
 int64_t AP_GetItemAtLocation(AP_State*, int64_t location_id);
 bool AP_GetLocationHasLocalItem(AP_State*, int64_t location_id);
 AP_ItemType AP_GetLocationItemType(AP_State*, int64_t location_id);

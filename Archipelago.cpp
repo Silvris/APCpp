@@ -730,6 +730,10 @@ int64_t AP_GetReceivedItem(AP_State* state, size_t item_idx) {
     return state->received_items[item_idx];
 }
 
+int64_t AP_GetSendingPlayer(AP_State* state, size_t item_idx) {
+    return state->sending_player_ids[item_idx];
+}
+
 int64_t AP_GetSlotDataInt(AP_State* state, const char* key) {
     return stol(state->slot_data[key]);
 }
