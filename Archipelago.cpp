@@ -18,6 +18,7 @@
 #include <functional>
 #include <utility>
 #include <vector>
+#include <filesystem>
 
 constexpr int AP_OFFLINE_SLOT = 1;
 #define AP_OFFLINE_NAME "You"
@@ -29,7 +30,7 @@ void AP_Init_Generic(AP_State* state);
 bool parse_response(AP_State* state, std::string msg, std::string &request);
 void AP_GetServerData(AP_State* state, AP_GetServerDataRequest* request);
 void APSend(AP_State* state, std::string req);
-void WriteFileJSON(AP_State* state, Json::Value val, std::string path);
+void WriteFileJSON(AP_State* state, Json::Value val, const std::filesystem::path& path);
 std::string getItemName(AP_State* state, std::string game, int64_t id);
 std::string getLocationName(AP_State* state, std::string game, int64_t id);
 void parseDataPkg(AP_State* state, Json::Value new_datapkg);
@@ -121,7 +122,7 @@ struct AP_State
     size_t last_item_idx = 0;
 
     // Singleplayer Seed Info
-    std::string sp_save_path;
+    std::filesystem::path sp_save_path;
     Json::Value sp_save_root;
 
     // Misc Data for Clients
@@ -137,7 +138,7 @@ struct AP_State
     std::vector<std::string> slotdata_strings;
 
     // Datapackage Stuff
-    std::string const datapkg_cache_path = "APCpp_datapkg.cache";
+    std::filesystem::path datapkg_cache_path = "APCpp_datapkg.cache";
     Json::Value datapkg_cache;
     std::set<std::string> datapkg_outdated_games;
 
@@ -242,13 +243,23 @@ void AP_InitSolo(AP_State* state, const char* filename) {
     state->queue_all_locations = false;
     state->scout_queued_locations = false;
     state->scout_all_locations = false;
-    std::ifstream mwfile(filename);
+
+    std::filesystem::path mwfile_path{ std::u8string{ reinterpret_cast<const char8_t*>(filename) } };
+    std::ifstream mwfile {mwfile_path};
     state->reader.parse(mwfile, state->sp_ap_root);
     mwfile.close();
-    state->sp_save_path = std::string(filename) + ".save";
-    std::ifstream savefile(state->sp_save_path);
-    state->reader.parse(savefile, state->sp_save_root);
-    savefile.close();
+
+    state->sp_save_path = mwfile_path;
+    state->sp_save_path.replace_extension("save.json");
+    if (std::filesystem::exists(state->sp_save_path)) {
+        std::ifstream savefile{ state->sp_save_path };
+        state->reader.parse(savefile, state->sp_save_root);
+        savefile.close();
+    }
+    else {
+        state->sp_save_root = {};
+    }
+
     WriteFileJSON(state, state->sp_save_root, state->sp_save_path);
     state->ap_player_name = AP_OFFLINE_NAME;
     AP_Init_Generic(state);
@@ -1186,7 +1197,7 @@ void APSend(AP_State* state, std::string req) {
     state->webSocket.send(req);
 }
 
-void WriteFileJSON(AP_State* state, Json::Value val, std::string path) {
+void WriteFileJSON(AP_State* state, Json::Value val, const std::filesystem::path& path) {
     std::ofstream out;
     out.open(path);
     out.seekp(0);
