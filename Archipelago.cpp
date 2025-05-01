@@ -59,6 +59,7 @@ struct AP_State
     bool manage_memory = true;
     int scout_queued_locations_hint;
     int scout_all_locations_hint;
+    int ap_team_id;
     int ap_player_id;
     std::string ap_player_name;
     size_t ap_player_name_hash;
@@ -884,6 +885,7 @@ bool parse_response(AP_State* state, std::string msg, std::string &request) {
                 };
                 player.game = root[i]["slot_info"][std::to_string(player.slot)]["game"].asString();
                 state->map_players[root[i]["players"][j]["slot"].asInt()] = player;
+                state->ap_team_id = root[i]["team"].asInt();
             }
             if ((root[i]["slot_data"].get("death_link", false).asBool() || root[i]["slot_data"].get("DeathLink", false).asBool()) && state->deathlinksupported) state->enable_deathlink = true;
             if (root[i]["slot_data"]["death_link_amnesty"] != Json::nullValue)
