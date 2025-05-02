@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 
 project(APCpp)
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
@@ -48,8 +48,17 @@ endif (MINGW OR NOT ZLIB_FOUND)
 set(IXWEBSOCKET_INSTALL OFF CACHE BOOL "" FORCE)
 add_subdirectory(IXWebSocket)
 include_directories(IXWebSocket)
-target_link_libraries(APCpp ixwebsocket)
-target_link_libraries(APCpp-static ixwebsocket)
+target_include_directories(APCpp PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/lib/zlib/contrib/minizip)
+target_include_directories(APCpp-static PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/lib/zlib/contrib/minizip)
+target_sources(APCpp PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/zlib/contrib/minizip/unzip.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/zlib/contrib/minizip/ioapi.c)
+target_sources(APCpp-static PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/zlib/contrib/minizip/unzip.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/zlib/contrib/minizip/ioapi.c)
+
+target_link_libraries(APCpp ixwebsocket zlibstatic)
+target_link_libraries(APCpp-static ixwebsocket zlibstatic)
 
 # Attempt finding system version of JsonCpp
 find_package(PkgConfig)
