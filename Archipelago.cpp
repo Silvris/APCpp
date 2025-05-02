@@ -260,8 +260,8 @@ zip_mem_data load_zip_file(const std::filesystem::path& path) {
 // Functions for reading an in-memory zip with minizip.
 void fill_mem_filefunc(zlib_filefunc_def* pzlib_filefunc_def, zip_mem_data* data) {
     pzlib_filefunc_def->zopen_file = [](voidpf opaque, const char* unused, int mode) {
-        (void)unused;
-        (void)mode;
+        (void) unused;
+        (void) mode;
 
         zip_mem_data *mem = reinterpret_cast<zip_mem_data*>(opaque);
         mem->cur_offset = 0;
@@ -269,7 +269,7 @@ void fill_mem_filefunc(zlib_filefunc_def* pzlib_filefunc_def, zip_mem_data* data
         return static_cast<void*>(mem);
     };
     pzlib_filefunc_def->zread_file = [](voidpf opaque, voidpf stream, void* buf, uLong size) {
-        (void)opaque;
+        (void) opaque;
         zip_mem_data *mem = reinterpret_cast<zip_mem_data*>(stream);
 
         if (size > mem->data.size() - mem->cur_offset) {
@@ -286,13 +286,13 @@ void fill_mem_filefunc(zlib_filefunc_def* pzlib_filefunc_def, zip_mem_data* data
         return uLong{0};
     };
     pzlib_filefunc_def->ztell_file = [](voidpf opaque, voidpf stream) {
-        (void)opaque;
+        (void) opaque;
         zip_mem_data *mem = reinterpret_cast<zip_mem_data*>(stream);
 
         return static_cast<long>(mem->cur_offset);
     };
     pzlib_filefunc_def->zseek_file = [](voidpf opaque, voidpf stream, uLong offset, int origin) {
-        (void)opaque;
+        (void) opaque;
         zip_mem_data *mem = reinterpret_cast<zip_mem_data*>(stream);
         uLong new_pos;
         switch (origin)
