@@ -4,6 +4,8 @@
 #include "ixwebsocket/IXWebSocket.h"
 #include "ixwebsocket/IXUserAgent.h"
 
+#include "unzip.h"
+
 #include <cstddef>
 #include <cstdint>
 #include <fstream>
@@ -237,7 +239,153 @@ void AP_Init(AP_State* state, const char* ip, const char* game, const char* play
     AP_Init_Generic(state);
 }
 
-void AP_InitSolo(AP_State* state, const char* filename) {
+struct zip_mem_data {
+    std::vector<char> data;
+    size_t cur_offset;
+};
+
+zip_mem_data load_zip_file(const std::filesystem::path& path) {
+    zip_mem_data ret{};
+
+    std::ifstream stream{path, std::ios::binary};
+    stream.seekg(0, std::ios::end);
+    ret.data.resize(stream.tellg());
+    stream.seekg(0, std::ios::beg);
+
+    stream.read(ret.data.data(), ret.data.size());
+
+    return ret;
+}
+
+// Functions for reading an in-memory zip with minizip.
+void fill_mem_filefunc(zlib_filefunc_def* pzlib_filefunc_def, zip_mem_data* data) {
+    pzlib_filefunc_def->zopen_file = [](voidpf opaque, const char* unused, int mode) {
+        (void)unused;
+        (void)mode;
+
+        zip_mem_data *mem = reinterpret_cast<zip_mem_data*>(opaque);
+        mem->cur_offset = 0;
+
+        return static_cast<void*>(mem);
+    };
+    pzlib_filefunc_def->zread_file = [](voidpf opaque, voidpf stream, void* buf, uLong size) {
+        (void)opaque;
+        zip_mem_data *mem = reinterpret_cast<zip_mem_data*>(stream);
+
+        if (size > mem->data.size() - mem->cur_offset) {
+            size = mem->data.size() - mem->cur_offset;
+        }
+
+        memcpy(buf, mem->data.data() + mem->cur_offset, size);
+        mem->cur_offset += size;
+
+        return size;
+    };
+    pzlib_filefunc_def->zwrite_file = [](voidpf, voidpf, const void*, uLong) {
+        // Writing not supported.
+        return uLong{0};
+    };
+    pzlib_filefunc_def->ztell_file = [](voidpf opaque, voidpf stream) {
+        (void)opaque;
+        zip_mem_data *mem = reinterpret_cast<zip_mem_data*>(stream);
+
+        return static_cast<long>(mem->cur_offset);
+    };
+    pzlib_filefunc_def->zseek_file = [](voidpf opaque, voidpf stream, uLong offset, int origin) {
+        (void)opaque;
+        zip_mem_data *mem = reinterpret_cast<zip_mem_data*>(stream);
+        uLong new_pos;
+        switch (origin)
+        {
+            case ZLIB_FILEFUNC_SEEK_CUR:
+                new_pos = mem->cur_offset + offset;
+                break;
+            case ZLIB_FILEFUNC_SEEK_END:
+                new_pos = mem->data.size() + offset;
+                break;
+            case ZLIB_FILEFUNC_SEEK_SET:
+                new_pos = offset;
+                break;
+            default: 
+                return -1L;
+        }
+
+        if (new_pos > mem->data.size()) {
+            return 1L; /* Failed to seek that far */
+        }
+        mem->cur_offset = new_pos;
+        return 0L;
+    };
+    pzlib_filefunc_def->zclose_file = [](voidpf, voidpf) {
+        // Nothing to do.
+        return 0;
+    };
+    pzlib_filefunc_def->zerror_file = [](voidpf, voidpf) {
+        // Nothing to do.
+        return 0;
+    };
+    pzlib_filefunc_def->opaque = static_cast<void*>(data);
+}
+
+bool load_solo_zip(AP_State* state, const std::filesystem::path& zip_path, const char* seed) {
+    // Read the zip into memory and pull the multidata json file from it. 
+    zlib_filefunc_def zlib_funcs{};
+    zip_mem_data zip_data = load_zip_file(zip_path);
+
+    if (zip_data.data.size() == 0) {
+        // Failed to open
+        return false;
+    }
+    // printf("Found zip\n");
+
+    // Open the zip in miniunzip.
+    fill_mem_filefunc(&zlib_funcs, &zip_data);   
+    unzFile gen_zip = unzOpen2(nullptr, &zlib_funcs);
+
+    // Look for the multidata file in the zip.
+    int result = unzLocateFile(gen_zip, ("AP_" + std::string{seed} + ".archipelago").c_str(), 0);
+    if (result != UNZ_OK) {
+        // Failed to find save bin
+        return false;
+    }
+    // printf("Found multidata file\n");
+
+    // Get the multidata file info.
+    unz_file_info multidata_file_info;
+    unzGetCurrentFileInfo(gen_zip, &multidata_file_info, nullptr, 0, nullptr, 0, nullptr, 0);
+
+    // printf("Got multidata file info, size %lu\n", multidata_file_info.uncompressed_size);
+
+    // Open the file.
+    int open_result = unzOpenCurrentFile(gen_zip);
+
+    // printf("Open multidata result: %d\n", open_result);
+    if (open_result != UNZ_OK) {
+        return false;
+    }
+    
+    // Read the multidata file into a vector.
+    std::vector<char> multidata{};
+    multidata.resize(multidata_file_info.uncompressed_size);
+    int bytes_read = unzReadCurrentFile(gen_zip, multidata.data(), multidata.size());
+
+    // printf("Read multidata file, bytes read %d\n", bytes_read);
+    if (bytes_read <= 0) {
+        return false;
+    }
+
+    // Close the minizip handle.
+    unzCloseCurrentFile(gen_zip);
+    unzClose(gen_zip);
+
+    // Parse the multidata file, skipping the first byte (since it's an identifier byte written during generation).
+    bool parse_result = state->reader.parse(multidata.data() + 1, multidata.data() + multidata.size(), state->sp_ap_root);
+
+    // printf("Parse result: %d\n", (int)parse_result);
+    return parse_result;
+}
+
+void AP_InitSolo(AP_State* state, const char* filename, const char* seed) {
     state->multiworld = false;
     state->notfound = false;
     state->queue_all_locations = false;
@@ -245,9 +393,10 @@ void AP_InitSolo(AP_State* state, const char* filename) {
     state->scout_all_locations = false;
 
     std::filesystem::path mwfile_path{ std::u8string{ reinterpret_cast<const char8_t*>(filename) } };
-    std::ifstream mwfile {mwfile_path};
-    state->reader.parse(mwfile, state->sp_ap_root);
-    mwfile.close();
+    if (!load_solo_zip(state, mwfile_path, seed)) {
+        state->auth = false;
+        state->notfound = false;
+    }
 
     state->sp_save_path = mwfile_path;
     state->sp_save_path.replace_extension("save.json");

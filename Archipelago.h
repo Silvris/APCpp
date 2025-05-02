@@ -22,7 +22,7 @@ AP_State* AP_New();
 void AP_Free(AP_State*);
 
 void AP_Init(AP_State*, const char*, const char*, const char*, const char*);
-void AP_InitSolo(AP_State*, const char*);
+void AP_InitSolo(AP_State*, const char* filename, const char* seed);
 bool AP_IsInit(AP_State*);
 bool AP_IsConnected(AP_State*);
 
