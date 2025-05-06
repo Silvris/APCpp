@@ -71,7 +71,7 @@ struct AP_State
     std::string ap_passwd;
     std::uint64_t ap_uuid = 0;
     std::mt19937 rando;
-    AP_NetworkVersion client_version = {0,2,6}; // Default for compatibility reasons
+    AP_NetworkVersion client_version = {0,5,0};
 
     // Deathlink Stuff
     bool deathlinkstat = false;
