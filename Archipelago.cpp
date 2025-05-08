@@ -1178,8 +1178,8 @@ bool parse_response(AP_State* state, std::string msg, std::string &request) {
         } else if (cmd == "PrintJSON") {
             const std::string printType = root[i].get("type","").asString();
             if (printType == "ItemSend" || printType == "ItemCheat") {
-                if (getPlayer(state, 0, root[i]["receiving"].asInt())->alias == getPlayer(state, 0, state->ap_player_id)->alias || getPlayer(state, 0, root[i]["item"]["player"].asInt())->alias != getPlayer(state, 0, state->ap_player_id)->alias) continue;
-                AP_NetworkPlayer* recv_player = getPlayer(state, 0, root[i]["receiving"].asInt());
+                if (getPlayer(state, state->ap_team_id, root[i]["receiving"].asInt())->alias == getPlayer(state, state->ap_team_id, state->ap_player_id)->alias || getPlayer(state, state->ap_team_id, root[i]["item"]["player"].asInt())->alias != getPlayer(state, state->ap_team_id, state->ap_player_id)->alias) continue;
+                AP_NetworkPlayer* recv_player = getPlayer(state, state->ap_team_id, root[i]["receiving"].asInt());
                 AP_ItemSendMessage* msg = new AP_ItemSendMessage;
                 msg->type = AP_MessageType::ItemSend;
                 msg->item = getItemName(state, recv_player->game, root[i]["item"]["item"].asInt64());
@@ -1187,8 +1187,8 @@ bool parse_response(AP_State* state, std::string msg, std::string &request) {
                 msg->text = msg->item + std::string(" was sent to ") + msg->recvPlayer;
                 state->messageQueue.push_back(msg);
             } else if (printType == "Hint") {
-                AP_NetworkPlayer* send_player = getPlayer(state, 0, root[i]["item"]["player"].asInt());
-                AP_NetworkPlayer* recv_player = getPlayer(state, 0, root[i]["receiving"].asInt());
+                AP_NetworkPlayer* send_player = getPlayer(state, state->ap_team_id, root[i]["item"]["player"].asInt());
+                AP_NetworkPlayer* recv_player = getPlayer(state, state->ap_team_id, root[i]["receiving"].asInt());
                 AP_HintMessage* msg = new AP_HintMessage;
                 msg->type = AP_MessageType::Hint;
                 msg->item = getItemName(state, recv_player->game, root[i]["item"]["item"].asInt64());
@@ -1209,7 +1209,7 @@ bool parse_response(AP_State* state, std::string msg, std::string &request) {
                 msg->text = "";
                 for (auto itr : root[i]["data"]) {
                     if (itr.get("type","").asString() == "player_id") {
-                        msg->text += getPlayer(state, 0, itr["text"].asInt())->alias;
+                        msg->text += getPlayer(state, state->ap_team_id, itr["text"].asInt())->alias;
                     } else if (itr.get("text","") != "") {
                         msg->text += itr["text"].asString();
                     }
@@ -1222,7 +1222,7 @@ bool parse_response(AP_State* state, std::string msg, std::string &request) {
                 AP_NetworkItem item;
                 item.item = root[i]["locations"][j]["item"].asInt64();
                 item.location = root[i]["locations"][j]["location"].asInt64();
-                AP_NetworkPlayer* player = getPlayer(state, 0, root[i]["locations"][j]["player"].asInt());
+                AP_NetworkPlayer* player = getPlayer(state, state->ap_team_id, root[i]["locations"][j]["player"].asInt());
                 item.player = player->slot;
                 item.flags = root[i]["locations"][j]["flags"].asInt();
                 item.itemName = getItemName(state, player->game, item.item);
@@ -1264,7 +1264,7 @@ bool parse_response(AP_State* state, std::string msg, std::string &request) {
                 state->sending_player_ids.push_back(sending_player_id);
                 if (state->queueitemrecvmsg && notify) {
                     AP_ItemRecvMessage* msg = new AP_ItemRecvMessage;
-                    AP_NetworkPlayer* sender = getPlayer(state, 0, sending_player_id);
+                    AP_NetworkPlayer* sender = getPlayer(state, state->ap_team_id, sending_player_id);
                     msg->type = AP_MessageType::ItemRecv;
                     msg->item = getItemName(state, state->ap_game, item_id);
                     msg->sendPlayer = sender->alias;
