@@ -214,6 +214,7 @@ struct AP_RoomInfo {
 int AP_GetRoomInfo(AP_State*, AP_RoomInfo*);
 AP_ConnectionStatus AP_GetConnectionStatus(AP_State*);
 uint64_t AP_GetUUID(AP_State*);
+int AP_GetTeamID(AP_State*);
 int AP_GetPlayerID(AP_State*);
 
 /* Serverside Data Types */

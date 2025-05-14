@@ -768,6 +768,10 @@ uint64_t AP_GetUUID(AP_State* state) {
     return state->ap_uuid;
 }
 
+int AP_GetTeamID(AP_State* state){
+    return state->ap_team_id;
+}
+
 int AP_GetPlayerID(AP_State* state) {
     return state->ap_player_id;
 }
