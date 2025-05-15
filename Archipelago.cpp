@@ -927,9 +927,9 @@ uintptr_t AP_AccessSlotDataRawDict(AP_State* state, uintptr_t jsonValue, const c
     return (uintptr_t) value;
 }
 
-uint32_t AP_AccessSlotDataRawInt(AP_State* state, uintptr_t jsonValue) {
+int64_t AP_AccessSlotDataRawInt(AP_State* state, uintptr_t jsonValue) {
     const Json::Value* value = (Json::Value*) jsonValue;
-    return (*value).asInt();
+    return (*value).asInt64();
 }
 
 const char* AP_AccessSlotDataRawString(AP_State* state, uintptr_t jsonValue) {
