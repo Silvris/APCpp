@@ -1058,7 +1058,9 @@ bool parse_response(AP_State* state, std::string msg, std::string &request) {
                 state->deathlink_amnesty = root[i]["slot_data"].get("DeathLink_Amnesty", 0).asInt();
             state->cur_deathlink_amnesty = state->deathlink_amnesty;
             for (const auto& key : root[i]["slot_data"].getMemberNames()) {
-                state->slot_data[key] = root[i]["slot_data"][key].asString();
+                if (root[i]["slot_data"][key].isConvertibleTo(Json::stringValue)) {
+                    state->slot_data[key] = root[i]["slot_data"][key].asString();
+                }
             }
             for (std::string key : state->slotdata_strings) {
                 if (state->map_slotdata_callback_int.count(key)) {
