@@ -16,6 +16,38 @@ extern std::string ap_player_name;
 extern "C"
 {
 
+enum SlotDataType {
+    Null = 0,
+    Bool,
+    Int,
+    Float,
+    String,
+    Array,
+    Map,
+};
+class SlotDataValue;
+
+typedef std::map<std::string, SlotDataValue> SlotDataValueHolder;
+
+class SlotDataValue {
+public:
+    SlotDataType type;
+    bool _bool;
+    int  _int;
+    float _float;
+    std::string _string;
+    SlotDataValueHolder values;
+
+    SlotDataValue();
+    SlotDataValue(bool);
+    SlotDataValue(int);
+    SlotDataValue(float);
+    SlotDataValue(std::string);
+    SlotDataValue(SlotDataType);
+    SlotDataValue(const SlotDataValue&);
+    SlotDataValue operator=(const SlotDataValue&);
+};
+
 struct AP_State;
 
 AP_State* AP_New();
@@ -94,6 +126,9 @@ void AP_RegisterSlotDataRawCallback(AP_State*, std::string, void (*f_slotdata)(s
 
 int64_t AP_GetSlotDataInt(AP_State*, const char* key);
 const char* AP_GetSlotDataString(AP_State*, const char* key);
+bool AP_GetSlotDataBool(AP_State*, const char* key);
+float AP_GetSlotDataFloat(AP_State*, const char* key);
+SlotDataValue AP_GetSlotDataValue(AP_State*, const char* key);
 
 char* AP_GetDataStorageSync(AP_State* state, const char* key);
 void AP_SetDataStorageSync(AP_State* state, const char* key, char* value);

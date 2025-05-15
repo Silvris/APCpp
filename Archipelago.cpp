@@ -25,6 +25,7 @@
 constexpr int AP_OFFLINE_SLOT = 1;
 #define AP_OFFLINE_NAME "You"
 
+
 //Setup Stuff
 
 // PRIV Func Declarations Start
@@ -39,6 +40,109 @@ void parseDataPkg(AP_State* state, Json::Value new_datapkg);
 void parseDataPkg(AP_State* state);
 AP_NetworkPlayer* getPlayer(AP_State* state, int team, int slot);
 // PRIV Func Declarations End
+
+//Slot Data Handling
+
+SlotDataValue::SlotDataValue() {
+    type = SlotDataType::Null;
+    _bool = false;
+    _int = 0;
+    _float = 0.0f;
+    _string = std::string("");
+}
+
+SlotDataValue::SlotDataValue(bool value) {
+    type = SlotDataType::Bool;
+    _bool = value;
+    _int = (int)value;
+    _float = value ? 1.0f : 0.0f;
+    _string = std::string(value ? "true" : "false");
+}
+
+SlotDataValue::SlotDataValue(int value) {
+    type = SlotDataType::Int;
+    _bool = (bool)value;
+    _int = value;
+    _float = value > 0 ? 1.0f : 0.0f;
+    _string = std::string(value > 0 ? "true" : "false");
+}
+
+SlotDataValue::SlotDataValue(float value) {
+    type = SlotDataType::Float;
+    _bool = value > 0 ? true : false;
+    _int = (int)value;
+    _float = value;
+    _string = std::string(value > 0 ? "true" : "false");
+}
+
+SlotDataValue::SlotDataValue(std::string value) {
+    type = SlotDataType::String;
+    _bool = value.length() > 0 ? true : false; //little weird but aight
+    _int = 0;
+    _float = 0.0f;
+    _string = value;
+}
+
+SlotDataValue::SlotDataValue(SlotDataType datatype) {
+    type = datatype;
+    _bool = false;
+    _int = 0;
+    _float = 0.0f;
+    _string = std::string("");
+}
+
+SlotDataValue::SlotDataValue(SlotDataValue const& other) {
+    this->type = other.type;
+    this->_bool = other._bool;
+    this->_int = other._int;
+    this->_float = other._float;
+    this->_string = other._string;
+    this->values = other.values;
+}
+
+SlotDataValue SlotDataValue::operator=(SlotDataValue const& other) {
+    if (this != &other) {
+        this->type = other.type;
+        this->_bool = other._bool;
+        this->_int = other._int;
+        this->_float = other._float;
+        this->_string = other._string;
+        this->values = other.values;
+    }
+    return *this;
+}
+
+SlotDataValue* CreateSlotDataValueFromJson(Json::Value value) {
+    SlotDataValue* slotData;
+    switch (value.type()) {
+    case Json::ValueType::intValue:
+    case Json::ValueType::uintValue:
+        slotData = new SlotDataValue(value.asInt());
+        break;
+    case Json::ValueType::booleanValue:
+        slotData = new SlotDataValue(value.asBool());
+        break;
+    case Json::ValueType::realValue:
+        slotData = new SlotDataValue(value.asFloat());
+        break;
+    case Json::ValueType::arrayValue:
+        slotData = new SlotDataValue(SlotDataType::Array);
+        for (int i = 0; i < value.size(); i++) {
+
+            slotData->values[std::to_string(i)] = *CreateSlotDataValueFromJson(value[i]);
+        }
+        break;
+    case Json::ValueType::objectValue:
+        slotData = new SlotDataValue(SlotDataType::Map);
+        for (const auto& key : value.getMemberNames()) {
+            slotData->values[key] = *CreateSlotDataValueFromJson(value[key]);
+        }
+        break;
+    default:
+        slotData = new SlotDataValue();
+    }
+    return slotData;
+}
 
 #define MAX_RETRIES 1
 
@@ -94,7 +198,7 @@ struct AP_State
     std::map<int64_t, AP_ItemType> location_item_type;
     std::map<int64_t, std::string> location_item_name;
     std::map<int64_t, std::string> location_item_player;
-    std::map<std::string, std::string> slot_data;
+    std::map<std::string, SlotDataValue> slot_data;
 
     // Sets
     std::set<int64_t> all_items;
@@ -905,11 +1009,23 @@ int64_t AP_GetSendingPlayer(AP_State* state, size_t item_idx) {
 }
 
 int64_t AP_GetSlotDataInt(AP_State* state, const char* key) {
-    return stol(state->slot_data[key]);
+    return state->slot_data[key]._int;
 }
 
 const char* AP_GetSlotDataString(AP_State* state, const char* key) {
-    return state->slot_data[key].c_str();
+    return state->slot_data[key]._string.c_str();
+}
+
+bool AP_GetSlotDataBool(AP_State* state, const char* key) {
+    return state->slot_data[key]._bool;
+}
+
+float AP_GetSlotDataFloat(AP_State* state, const char* key) {
+    return state->slot_data[key]._float;
+}
+
+SlotDataValue AP_GetSlotDataValue(AP_State* state, const char* key) {
+    return state->slot_data[key];
 }
 
 int64_t AP_GetItemAtLocation(AP_State* state, int64_t location_id) {
@@ -1051,17 +1167,15 @@ bool parse_response(AP_State* state, std::string msg, std::string &request) {
                 state->map_players[root[i]["players"][j]["slot"].asInt()] = player;
                 state->ap_team_id = root[i]["team"].asInt();
             }
+            for (const auto& key : root[i]["slot_data"].getMemberNames()) {
+                state->slot_data[key] = *CreateSlotDataValueFromJson(root[i]["slot_data"][key]);
+            }
             if ((root[i]["slot_data"].get("death_link", false).asBool() || root[i]["slot_data"].get("DeathLink", false).asBool()) && state->deathlinksupported) state->enable_deathlink = true;
             if (root[i]["slot_data"]["death_link_amnesty"] != Json::nullValue)
                 state->deathlink_amnesty = root[i]["slot_data"].get("death_link_amnesty", 0).asInt();
             else if (root[i]["slot_data"]["DeathLink_Amnesty"] != Json::nullValue)
                 state->deathlink_amnesty = root[i]["slot_data"].get("DeathLink_Amnesty", 0).asInt();
             state->cur_deathlink_amnesty = state->deathlink_amnesty;
-            for (const auto& key : root[i]["slot_data"].getMemberNames()) {
-                if (root[i]["slot_data"][key].isConvertibleTo(Json::stringValue)) {
-                    state->slot_data[key] = root[i]["slot_data"][key].asString();
-                }
-            }
             for (std::string key : state->slotdata_strings) {
                 if (state->map_slotdata_callback_int.count(key)) {
                     (*state->map_slotdata_callback_int.at(key))(root[i]["slot_data"][key].asInt());
