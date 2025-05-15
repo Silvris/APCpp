@@ -95,6 +95,7 @@ struct AP_State
     std::map<int64_t, std::string> location_item_name;
     std::map<int64_t, std::string> location_item_player;
     std::map<std::string, std::string> slot_data;
+    std::map<std::string, Json::Value> slot_data_raw;
 
     // Sets
     std::set<int64_t> all_items;
@@ -912,6 +913,30 @@ const char* AP_GetSlotDataString(AP_State* state, const char* key) {
     return state->slot_data[key].c_str();
 }
 
+uintptr_t AP_GetSlotDataRaw(AP_State* state, const char* key) {
+    return (uintptr_t) &state->slot_data_raw[key];
+}
+
+uintptr_t AP_AccessSlotDataRawArray(AP_State* state, uintptr_t jsonValue, size_t index) {
+    const Json::Value* value = &(*((Json::Value*) jsonValue))[(Json::ArrayIndex) index];
+    return (uintptr_t) value;
+}
+
+uintptr_t AP_AccessSlotDataRawDict(AP_State* state, uintptr_t jsonValue, const char* key) {
+    const Json::Value* value = &(*((Json::Value*) jsonValue))[key];
+    return (uintptr_t) value;
+}
+
+uint32_t AP_AccessSlotDataRawInt(AP_State* state, uintptr_t jsonValue) {
+    const Json::Value* value = (Json::Value*) jsonValue;
+    return (*value).asInt();
+}
+
+const char* AP_AccessSlotDataRawString(AP_State* state, uintptr_t jsonValue) {
+    const Json::Value* value = (Json::Value*) jsonValue;
+    return (*value).asString().c_str();
+}
+
 int64_t AP_GetItemAtLocation(AP_State* state, int64_t location_id) {
     return state->location_to_item[location_id];
 }
@@ -1058,6 +1083,7 @@ bool parse_response(AP_State* state, std::string msg, std::string &request) {
                 state->deathlink_amnesty = root[i]["slot_data"].get("DeathLink_Amnesty", 0).asInt();
             state->cur_deathlink_amnesty = state->deathlink_amnesty;
             for (const auto& key : root[i]["slot_data"].getMemberNames()) {
+                state->slot_data_raw[key] = root[i]["slot_data"][key];
                 if (root[i]["slot_data"][key].isConvertibleTo(Json::stringValue)) {
                     state->slot_data[key] = root[i]["slot_data"][key].asString();
                 }

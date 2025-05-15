@@ -95,6 +95,12 @@ void AP_RegisterSlotDataRawCallback(AP_State*, std::string, void (*f_slotdata)(s
 int64_t AP_GetSlotDataInt(AP_State*, const char* key);
 const char* AP_GetSlotDataString(AP_State*, const char* key);
 
+uintptr_t AP_GetSlotDataRaw(AP_State* state, const char* key);
+uintptr_t AP_AccessSlotDataRawArray(AP_State* state, uintptr_t jsonValue, size_t index);
+uintptr_t AP_AccessSlotDataRawDict(AP_State* state, uintptr_t jsonValue, const char* key);
+uint32_t AP_AccessSlotDataRawInt(AP_State* state, uintptr_t jsonValue);
+const char* AP_AccessSlotDataRawString(AP_State* state, uintptr_t jsonValue);
+
 char* AP_GetDataStorageSync(AP_State* state, const char* key);
 void AP_SetDataStorageSync(AP_State* state, const char* key, char* value);
 void AP_SetDataStorageAsync(AP_State* state, const char* key, char* value);
