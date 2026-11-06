@@ -83,7 +83,7 @@ std::function<void(AP_Bounce)> bouncedfunc = nullptr;
 // Serverdata Management
 std::map<std::string,AP_DataType> map_serverdata_typemanage;
 AP_GetServerDataRequest resync_serverdata_request;
-uint32_t last_item_idx = 0;
+BigInt::bigint last_item_idx = 0;
 
 void resolveDataStorageOp(Json::Value op);
 
@@ -215,6 +215,7 @@ void AP_Init(const char* filename) {
 
 void AP_Start() {
     init = true;
+    writer.omitEndingLineFeed();
     if (multiworld) {
         webSocket.start();
     } else {
@@ -346,7 +347,7 @@ void AP_SendItem(std::set<int64_t> const& locations) {
 
         Json::Value fake_msg;
         fake_msg[0]["cmd"] = "ReceivedItems";
-        fake_msg[0]["index"] = last_item_idx+1;
+        fake_msg[0]["index"] = (int)last_item_idx+1;
         fake_msg[0]["items"] = Json::arrayValue;
         for (int64_t idx : new_locations) {
             int64_t recv_item_id = sp_ap_root["location_to_item"].get(std::to_string(idx), 0).asInt64();
