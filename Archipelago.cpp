@@ -576,6 +576,7 @@ void AP_BulkSetServerData(AP_SetServerDataRequest* request) {
             if (request->default_value != nullptr) {
                 Json::Value default_val_json;
                 reader.parse(std::string(*(BigInt::bigint*)request->default_value), default_val_json);
+                req_t["default"] = default_val_json;
             }
             break;
         case AP_DataType::Double:
