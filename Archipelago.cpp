@@ -24,6 +24,7 @@
 #include <vector>
 #include <algorithm>
 #include <filesystem>
+#include "bigint.h"
 
 extern const int AP_OFFLINE_SLOT = 1404;
 constexpr int AP_OFFLINE_TEAM = 0;
@@ -563,11 +564,14 @@ void AP_BulkSetServerData(AP_SetServerDataRequest* request) {
     switch (request->type) {
         case AP_DataType::Int:
             for (int i = 0; i < request->operations.size(); i++) {
+                Json::Value data;
                 req_t["operations"][i]["operation"] = request->operations[i].operation;
-                req_t["operations"][i]["value"] = *((int*)request->operations[i].value);
+                reader.parse(std::string(*(BigInt::bigint*)request->operations[i].value), data);
+                req_t["operations"][i]["value"] = data;
             }
             if (request->default_value != nullptr) {
-                req_t["default"] = *((int*)request->default_value);
+                Json::Value default_val_json;
+                reader.parse(std::string(*(BigInt::bigint*)request->default_value), default_val_json);
             }
             break;
         case AP_DataType::Double:
@@ -874,7 +878,7 @@ bool parse_response(std::string msg, std::string &request) {
                 AP_GetServerDataRequest* target = map_server_data[itr];
                 switch (target->type) {
                     case AP_DataType::Int:
-                        *((int*)target->value) = root[i]["keys"][itr].asInt();
+                        *((BigInt::bigint*)target->value) = BigInt::bigint(writer.write(root[i]["keys"][itr]));
                         break;
                     case AP_DataType::Double:
                         *((double*)target->value) = root[i]["keys"][itr].asDouble();
@@ -900,8 +904,8 @@ bool parse_response(std::string msg, std::string &request) {
                 handleGiftAPISetReply(setreply);
             }
             if (setreplyfunc) {
-                int int_val;
-                int int_orig_val;
+                BigInt::bigint int_val;
+                BigInt::bigint int_orig_val;
                 double dbl_val;
                 double dbl_orig_val;
                 std::string raw_val;
@@ -910,8 +914,8 @@ bool parse_response(std::string msg, std::string &request) {
                 setreply.key = root[i]["key"].asString();
                 switch (map_serverdata_typemanage[setreply.key]) {
                     case AP_DataType::Int:
-                        int_val = root[i]["value"].asInt();
-                        int_orig_val = root[i]["original_value"].asInt();
+                        int_val = BigInt::bigint(writer.write(root[i]["value"]));
+                        int_orig_val = BigInt::bigint(writer.write(root[i]["original_value"]));
                         setreply.value = &int_val;
                         setreply.original_value = &int_orig_val;
                         break;
