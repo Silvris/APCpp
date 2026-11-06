@@ -57,6 +57,7 @@ bool deathlinksupported = false;
 bool enable_deathlink = false;
 int deathlink_amnesty = 0;
 int cur_deathlink_amnesty = 0;
+uint64_t last_deathlink = 0;
 
 // Message System
 std::deque<AP_Message*> messageQueue;
@@ -447,6 +448,7 @@ void AP_DeathLinkSend(const std::string &cause) {
     std::vector<std::string> tags = {std::string("DeathLink")};
     b.tags = &tags;
     AP_SendBounce(b);
+    last_deathlink = v["time"].asUInt64();
 }
 
 void AP_EnableQueueItemRecvMsgs(bool b) {
@@ -1075,9 +1077,12 @@ bool parse_response(std::string msg, std::string &request) {
                 for (unsigned int j = 0; j < root[i]["tags"].size(); j++) {
                     if (root[i]["tags"][j].asString() == "DeathLink") {
                         std::string source = root[i]["data"]["source"].asString();
+                        uint64_t last = root[i]["data"]["time"].asUInt64();
                         
                         // Suspicions confirmed ;-; But maybe we died, not them?
-                        if (source == ap_player_name) break; // We already paid our penance
+                        if (source == ap_player_name) {
+                            if (last == last_deathlink) break; // We already paid our penance
+                        }
                         deathlinkstat = true;
                         if (recvdeath) {
                             std::string cause = root[i]["data"]["cause"].isNull() ? "" : root[i]["data"]["cause"].asString();
