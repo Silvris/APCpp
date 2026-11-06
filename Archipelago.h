@@ -110,11 +110,14 @@ struct AP_ItemSendMessage : AP_Message {
     std::string item;
     std::string recvPlayer;
     std::string sendPlayer;
+    unsigned int item_flags;
+    bool is_sender;
 };
 
 struct AP_ItemRecvMessage : AP_Message {
     std::string item;
     std::string sendPlayer;
+    unsigned int item_flags;
 };
 
 struct AP_HintMessage : AP_Message {
@@ -122,6 +125,7 @@ struct AP_HintMessage : AP_Message {
     std::string sendPlayer;
     std::string recvPlayer;
     std::string location;
+    unsigned int item_flags;
     bool checked;
 };
 

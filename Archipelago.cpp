@@ -946,6 +946,8 @@ bool parse_response(std::string msg, std::string &request) {
                 msg->recvPlayer = recv_player.alias;
                 msg->sendPlayer = getPlayer(0,root[i]["item"]["player"].asInt()).alias;
                 msg->text = msg->item + std::string(" was sent to ") + msg->recvPlayer;
+                msg->item_flags = root[i]["item"]["flags"].asUInt();
+                msg->is_sender = (getPlayer(0, root[i]["item"]["player"].asInt()).alias == getPlayer(0, ap_player_id).alias);
                 messageQueue.push_back(msg);
             } else if (printType == "Hint") {
                 AP_NetworkPlayer send_player = getPlayer(0, root[i]["item"]["player"].asInt());
@@ -957,6 +959,7 @@ bool parse_response(std::string msg, std::string &request) {
                 msg->recvPlayer = recv_player.alias;
                 msg->location = getLocationName(send_player.game, root[i]["item"]["location"].asInt64());
                 msg->checked = root[i]["found"].asBool();
+                msg->item_flags = root[i]["item"]["flags"].asUInt();
                 msg->text = std::string("Item ") + msg->item + std::string(" from ") + msg->sendPlayer + std::string(" to ") + msg->recvPlayer + std::string(" at ") + msg->location + std::string((msg->checked ? " (Checked)" : " (Unchecked)"));
                 messageQueue.push_back(msg);
             } else if (printType == "Countdown") {
@@ -1028,6 +1031,7 @@ bool parse_response(std::string msg, std::string &request) {
                     msg->item = getItemName(ap_game, item_id);
                     msg->sendPlayer = sender.alias;
                     msg->text = std::string("Received ") + msg->item + std::string(" from ") + msg->sendPlayer;
+                    msg->item_flags = root[i]["items"][j]["flags"].asUInt();
                     messageQueue.push_back(msg);
                 }
             }
